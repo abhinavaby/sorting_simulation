@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Sorting Visualizer</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom smooth transition for height and color changes */
+        .array-bar {
+            transition: height 120ms ease, background-color 120ms ease;
+        }
+        /* Hide scrollbars cleanly for horizontal scroll containers on mobile */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        /* Custom range slider styling with larger touch-friendly thumb */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+            touch-action: manipulation;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 22px;
+            width: 22px;
+            border-radius: 50%;
+            background: #4f46e5;
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+            transition: transform 0.1s ease;
+        }
+        input[type=range]::-webkit-slider-thumb:hover,
+        input[type=range]::-webkit-slider-thumb:active {
+            transform: scale(1.15);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #cbd5e1;
+            border-radius: 999px;
+        }
+        input[type=range]:disabled::-webkit-slider-thumb {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col justify-between antialiased overflow-x-hidden selection:bg-indigo-100 selection:text-indigo-700">
+
+    <!-- Main Container -->
+    <div class="max-w-5xl w-full mx-auto px-3 sm:px-6 py-3 sm:py-8 flex-grow flex flex-col gap-3 sm:gap-6">
+        
+        <!-- Header & Algorithm Selector -->
+        <header class="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/80">
+            <div>
+                <h1 class="text-lg sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-indigo-600 inline-block"></span>
+                    Sorting Visualizer
+                </h1>
+                <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Step-by-step interactive algorithm simulation</p>
+            </div>
+
+            <!-- Mobile-Friendly Grid / Desktop Flex Algorithm Buttons (min 44px touch target) -->
+            <div id="algo-selector" class="grid grid-cols-3 sm:flex sm:flex-wrap gap-1.5 sm:gap-2 w-full md:w-auto" role="group" aria-label="Sorting Algorithms">
+                <button data-algo="selection" class="algo-btn min-h-[44px] px-2.5 sm:px-3.5 py-2 text-xs sm:text-sm font-medium rounded-xl transition-all bg-indigo-600 text-white shadow-sm touch-manipulation">Selection</button>
+                <button data-algo="insertion" class="algo-btn min-h-[44px] px-2.5 sm:px-3.5 py-2 text-xs sm:text-sm font-medium rounded-xl transition-all bg-slate-100 text-slate-600 hover:bg-slate-200/70 touch-manipulation">Insertion</button>
+                <button data-algo="quick" class="algo-btn min-h-[44px] px-2.5 sm:px-3.5 py-2 text-xs sm:text-sm font-medium rounded-xl transition-all bg-slate-100 text-slate-600 hover:bg-slate-200/70 touch-manipulation">Quick</button>
+                <button data-algo="merge" class="algo-btn min-h-[44px] px-2.5 sm:px-3.5 py-2 text-xs sm:text-sm font-medium rounded-xl transition-all bg-slate-100 text-slate-600 hover:bg-slate-200/70 touch-manipulation">Merge</button>
+                <button data-algo="heap" class="algo-btn min-h-[44px] px-2.5 sm:px-3.5 py-2 text-xs sm:text-sm font-medium rounded-xl transition-all bg-slate-100 text-slate-600 hover:bg-slate-200/70 touch-manipulation">Heap</button>
+                <button data-algo="radix" class="algo-btn min-h-[44px] px-2.5 sm:px-3.5 py-2 text-xs sm:text-sm font-medium rounded-xl transition-all bg-slate-100 text-slate-600 hover:bg-slate-200/70 touch-manipulation">Radix</button>
+            </div>
+        </header>
+
+        <!-- Algorithm Info Banner & Compact Mobile Legend -->
+        <section class="bg-white px-4 py-3.5 sm:px-5 sm:py-4 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4">
+            <div>
+                <h2 id="algo-title" class="text-sm sm:text-base font-semibold text-slate-900">Selection Sort</h2>
+                <p id="algo-desc" class="text-xs sm:text-sm text-slate-600 mt-0.5 leading-relaxed">
+                    Repeatedly scans the unsorted portion of the array to find the smallest number and swaps it into its correct position at the front.
+                </p>
+            </div>
+            <!-- Color Legend (2x2 grid on very narrow phones, inline wrap on larger screens) -->
+            <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-x-3 gap-y-1.5 sm:gap-4 text-[11px] sm:text-xs font-medium text-slate-600 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                <div class="flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-indigo-500 inline-block shrink-0"></span> Unsorted
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-amber-400 inline-block shrink-0"></span> Comparing
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-rose-500 inline-block shrink-0"></span> Swapping
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-emerald-500 inline-block shrink-0"></span> Sorted
+                </div>
+            </div>
+        </section>
+
+        <!-- Visualization Canvas Area -->
+        <main class="bg-white p-3 sm:p-6 rounded-2xl shadow-sm border border-slate-200/80 flex-grow flex flex-col justify-between min-h-[260px] sm:min-h-[380px]">
+            
+            <!-- Live Plain-English Status Pill -->
+            <div class="flex items-center justify-center mb-2 sm:mb-4">
+                <div id="status-banner" class="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl sm:rounded-full bg-slate-100 text-slate-700 text-xs sm:text-sm font-medium text-center transition-colors max-w-full">
+                    <span id="status-dot" class="w-2 h-2 rounded-full bg-indigo-500 shrink-0"></span>
+                    <span id="status-text" class="leading-snug">Ready to sort! Press Start to begin.</span>
+                </div>
+            </div>
+
+            <!-- Bars Container (adaptive spacing so narrow screens never overflow) -->
+            <div id="bars-container" class="w-full h-52 sm:h-80 flex items-end justify-center gap-[2px] sm:gap-1.5 pt-3 px-0.5 sm:px-2 select-none overflow-hidden">
+                <!-- Bars are dynamically injected here -->
+            </div>
+
+        </main>
+
+        <!-- Controls Footer Panel -->
+        <footer class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 sm:gap-5">
+            
+            <!-- Action Buttons (44px+ touch targets, clean 2-row grid on mobile) -->
+            <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center justify-center gap-2 sm:gap-2.5 w-full lg:w-auto">
+                <button id="btn-start-pause" class="col-span-2 sm:col-span-1 min-h-[44px] px-5 py-2.5 rounded-xl font-semibold text-sm text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] transition-all shadow-sm flex items-center gap-2 sm:min-w-[135px] justify-center touch-manipulation">
+                    <svg id="icon-play" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/></svg>
+                    <svg id="icon-pause" class="w-4 h-4 hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M5.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75A.75.75 0 007.25 3h-1.5zM12.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75a.75.75 0 00-.75-.75h-1.5z"/></svg>
+                    <span id="btn-start-text">Start Sort</span>
+                </button>
+
+                <button id="btn-reset" class="min-h-[44px] px-4 py-2.5 rounded-xl font-medium text-xs sm:text-sm text-slate-700 bg-slate-100 hover:bg-slate-200/80 active:scale-[0.98] transition-all touch-manipulation">
+                    Reset
+                </button>
+
+                <button id="btn-new-array" class="min-h-[44px] px-4 py-2.5 rounded-xl font-medium text-xs sm:text-sm text-slate-700 bg-slate-100 hover:bg-slate-200/80 active:scale-[0.98] transition-all touch-manipulation">
+                    New Array
+                </button>
+            </div>
+
+            <!-- Sliders (Size & Speed with generous touch areas) -->
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-5 w-full lg:w-auto justify-center">
+                <!-- Array Size Slider -->
+                <div class="flex items-center gap-3 w-full sm:w-48 min-h-[36px]">
+                    <label for="slider-size" class="text-xs font-medium text-slate-600 whitespace-nowrap w-16 sm:w-auto">
+                        Size: <span id="val-size" class="font-bold text-slate-900">18</span>
+                    </label>
+                    <input id="slider-size" type="range" min="6" max="50" value="18" class="w-full py-2">
+                </div>
+
+                <!-- Speed Slider -->
+                <div class="flex items-center gap-3 w-full sm:w-48 min-h-[36px]">
+                    <label for="slider-speed" class="text-xs font-medium text-slate-600 whitespace-nowrap w-24 sm:w-auto">
+                        Speed: <span id="val-speed" class="font-bold text-slate-900">Medium</span>
+                    </label>
+                    <input id="slider-speed" type="range" min="1" max="100" value="55" class="w-full py-2">
+                </div>
+            </div>
+
+        </footer>
+    </div>
+
+    <!-- Application Logic -->
+    <script>
+        /**
+         * Algorithm metadata: titles and plain-English 1-2 sentence descriptions.
+         */
+        const ALGORITHMS = {
+            selection: {
+                name: "Selection Sort",
+                description: "Repeatedly scans the unsorted portion of the array to find the smallest number and swaps it into its correct position at the front."
+            },
+            insertion: {
+                name: "Insertion Sort",
+                description: "Builds the sorted array one item at a time by taking each element and sliding it left until it reaches its proper spot."
+            },
+            quick: {
+                name: "Quick Sort",
+                description: "Picks a 'pivot' element and partitions the array so smaller numbers go to its left and larger numbers go to its right, then repeats recursively."
+            },
+            merge: {
+                name: "Merge Sort",
+                description: "Divides the array in half recursively until single elements remain, then merges those sorted halves back together in order."
+            },
+            heap: {
+                name: "Heap Sort",
+                description: "Organizes the array into a max-heap tree structure, repeatedly moving the largest element from the top to the end of the array."
+            },
+            radix: {
+                name: "Radix Sort",
+                description: "Sorts numbers without direct comparisons by grouping them digit by digit, starting from the least significant digit (ones place) up."
+            }
+        };
+
+        /**
+         * Application State
+         */
+        const isMobileViewport = () => window.innerWidth < 640;
+
+        const state = {
+            selectedAlgo: 'selection',
+            arraySize: isMobileViewport() ? 14 : 24,
+            speed: 55, // 1 to 100
+            initialArray: [],
+            currentArray: [],
+            steps: [],
+            currentStepIndex: 0,
+            isPlaying: false,
+            isSorted: false,
+            timerId: null
+        };
+
+        // DOM Elements
+        const barsContainer = document.getElementById('bars-container');
+        const algoButtons = document.querySelectorAll('.algo-btn');
+        const algoTitle = document.getElementById('algo-title');
+        const algoDesc = document.getElementById('algo-desc');
+        const statusBanner = document.getElementById('status-banner');
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+        
+        const btnStartPause = document.getElementById('btn-start-pause');
+        const btnStartText = document.getElementById('btn-start-text');
+        const iconPlay = document.getElementById('icon-play');
+        const iconPause = document.getElementById('icon-pause');
+        const btnReset = document.getElementById('btn-reset');
+        const btnNewArray = document.getElementById('btn-new-array');
+        
+        const sliderSize = document.getElementById('slider-size');
+        const valSize = document.getElementById('val-size');
+        const sliderSpeed = document.getElementById('slider-speed');
+        const valSpeed = document.getElementById('val-speed');
+
+        /**
+         * Converts slider speed (1-100) into millisecond delay.
+         */
+        function getDelayMs() {
+            // Maps 1 -> 500ms, 55 -> ~90ms, 100 -> 10ms
+            return Math.max(10, Math.round(500 * Math.pow(0.96, state.speed)));
+        }
+
+        function updateSpeedLabel() {
+            const s = Number(state.speed);
+            if (s < 25) valSpeed.textContent = 'Slow';
+            else if (s < 70) valSpeed.textContent = 'Medium';
+            else if (s < 90) valSpeed.textContent = 'Fast';
+            else valSpeed.textContent = 'Turbo';
+        }
+
+        /**
+         * Generates a new random array and resets visualization state.
+         */
+        function generateNewArray() {
+            pauseSimulation();
+            const arr = [];
+            for (let i = 0; i < state.arraySize; i++) {
+                // Values between 10 and 99 for clean 2-digit numbers and good bar heights
+                arr.push(Math.floor(Math.random() * 90) + 10);
+            }
+            state.initialArray = [...arr];
+            resetToInitialArray();
+        }
+
+        /**
+         * Resets the bars back to the unsorted initialArray.
+         */
+        function resetToInitialArray() {
+            pauseSimulation();
+            state.currentArray = [...state.initialArray];
+            state.steps = [];
+            state.currentStepIndex = 0;
+            state.isSorted = false;
+            
+            updateStatus('Ready to sort! Press Start to begin.', 'default');
+            updateStartButtonUI();
+            renderBars(state.currentArray);
+        }
+
+        /**
+         * Updates the status pill message and color indicator.
+         */
+        function updateStatus(text, type = 'default') {
+            statusText.textContent = text;
+            
+            // Reset classes
+            statusBanner.className = 'inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl sm:rounded-full text-xs sm:text-sm font-medium text-center transition-colors max-w-full ';
+            statusDot.className = 'w-2 h-2 rounded-full shrink-0 ';
+
+            if (type === 'comparing') {
+                statusBanner.classList.add('bg-amber-50', 'text-amber-800', 'border', 'border-amber-200/60');
+                statusDot.classList.add('bg-amber-500');
+            } else if (type === 'swapping') {
+                statusBanner.classList.add('bg-rose-50', 'text-rose-800', 'border', 'border-rose-200/60');
+                statusDot.classList.add('bg-rose-500');
+            } else if (type === 'sorted') {
+                statusBanner.classList.add('bg-emerald-50', 'text-emerald-800', 'border', 'border-emerald-200/60');
+                statusDot.classList.add('bg-emerald-500');
+            } else {
+                statusBanner.classList.add('bg-slate-100', 'text-slate-700');
+                statusDot.classList.add('bg-indigo-500');
+            }
+        }
+
+        /**
+         * Renders the bar chart based on current array and active step highlights.
+         */
+        function renderBars(arr, highlights = {}) {
+            const { comparing = [], swapping = [], sorted = [] } = highlights;
+            // Show numbers when bars are wide enough to read cleanly on the current screen width
+            const maxReadableBars = isMobileViewport() ? 16 : 28;
+            const showNumbers = arr.length <= maxReadableBars;
+
+            barsContainer.innerHTML = '';
+            const maxVal = 100;
+
+            arr.forEach((value, idx) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'flex-1 min-w-0 h-full flex flex-col justify-end items-center max-w-[44px]';
+
+                // Optional value label
+                if (showNumbers) {
+                    const label = document.createElement('span');
+                    label.textContent = value;
+                    label.className = 'text-[9px] sm:text-xs font-medium text-slate-500 mb-0.5 sm:mb-1 transition-colors leading-none';
+                    if (swapping.includes(idx)) label.classList.add('text-rose-600', 'font-bold');
+                    else if (comparing.includes(idx)) label.classList.add('text-amber-600', 'font-bold');
+                    wrapper.appendChild(label);
+                }
+
+                // Bar element
+                const bar = document.createElement('div');
+                const heightPercent = Math.max(8, (value / maxVal) * 86);
+                bar.style.height = `${heightPercent}%`;
+
+                let colorClass = 'bg-indigo-500'; // Default unsorted
+                if (sorted.includes(idx)) {
+                    colorClass = 'bg-emerald-500';
+                } else if (swapping.includes(idx)) {
+                    colorClass = 'bg-rose-500';
+                } else if (comparing.includes(idx)) {
+                    colorClass = 'bg-amber-400';
+                }
+
+                bar.className = `array-bar w-full rounded-t sm:rounded-t-md ${colorClass}`;
+                wrapper.appendChild(bar);
+                barsContainer.appendChild(wrapper);
+            });
+        }
+
+        /* ========================================================================
+           SORTING STEP GENERATORS
+           Each generator records snapshots: { array, comparing, swapping, sorted, message, type }
+           ======================================================================== */
+
+        function recordStep(steps, arr, comparing, swapping, sorted, message, type) {
+            steps.push({
+                array: [...arr],
+                comparing: [...comparing],
+                swapping: [...swapping],
+                sorted: [...sorted],
+                message,
+                type
+            });
+        }
+
+        function getSelectionSortSteps(inputArr) {
+            const arr = [...inputArr];
+            const steps = [];
+            const sorted = [];
+            const n = arr.length;
+
+            for (let i = 0; i < n; i++) {
+                let minIdx = i;
+                for (let j = i + 1; j < n; j++) {
+                    recordStep(steps, arr, [minIdx, j], [], sorted, `Comparing ${arr[j]} with current minimum ${arr[minIdx]}`, 'comparing');
+                    if (arr[j] < arr[minIdx]) {
+                        minIdx = j;
+                    }
+                }
+                if (minIdx !== i) {
+                    recordStep(steps, arr, [], [i, minIdx], sorted, `Swapping ${arr[i]} and ${arr[minIdx]}`, 'swapping');
+                    [arr[i], arr[minIdx]] = [arr[minIdx], arr[i]];
+                }
+                sorted.push(i);
+                recordStep(steps, arr, [], [], sorted, `${arr[i]} is now in its sorted position`, 'sorted');
+            }
+            return steps;
+        }
+
+        function getInsertionSortSteps(inputArr) {
+            const arr = [...inputArr];
+            const steps = [];
+            const n = arr.length;
+            const sorted = [0];
+
+            recordStep(steps, arr, [], [], sorted, `Starting with ${arr[0]} as the initial sorted section`, 'default');
+
+            for (let i = 1; i < n; i++) {
+                let j = i;
+                while (j > 0) {
+                    recordStep(steps, arr, [j - 1, j], [], sorted, `Comparing ${arr[j]} and ${arr[j - 1]}`, 'comparing');
+                    if (arr[j - 1] > arr[j]) {
+                        recordStep(steps, arr, [], [j - 1, j], sorted, `Swapping ${arr[j]} left past ${arr[j - 1]}`, 'swapping');
+                        [arr[j - 1], arr[j]] = [arr[j], arr[j - 1]];
+                        j--;
+                    } else {
+                        break;
+                    }
+                }
+                sorted.push(i);
+                recordStep(steps, arr, [], [], sorted, `Inserted ${arr[j]} into the sorted portion`, 'default');
+            }
+            return steps;
+        }
+
+        function getQuickSortSteps(inputArr) {
+            const arr = [...inputArr];
+            const steps = [];
+            const sorted = new Set();
+
+            function quickSort(low, high) {
+                if (low > high) return;
+                if (low === high) {
+                    sorted.add(low);
+                    recordStep(steps, arr, [], [], [...sorted], `Element ${arr[low]} is in its final position`, 'sorted');
+                    return;
+                }
+
+                const pivot = arr[high];
+                let i = low;
+                recordStep(steps, arr, [high], [], [...sorted], `Selected ${pivot} as the pivot`, 'comparing');
+
+                for (let j = low; j < high; j++) {
+                    recordStep(steps, arr, [j, high], [], [...sorted], `Comparing ${arr[j]} with pivot ${pivot}`, 'comparing');
+                    if (arr[j] < pivot) {
+                        if (i !== j) {
+                            recordStep(steps, arr, [], [i, j], [...sorted], `Swapping ${arr[i]} and ${arr[j]}`, 'swapping');
+                            [arr[i], arr[j]] = [arr[j], arr[i]];
+                        }
+                        i++;
+                    }
+                }
+
+                if (i !== high) {
+                    recordStep(steps, arr, [], [i, high], [...sorted], `Moving pivot ${pivot} into its sorted spot`, 'swapping');
+                    [arr[i], arr[high]] = [arr[high], arr[i]];
+                }
+                sorted.add(i);
+                recordStep(steps, arr, [], [], [...sorted], `Pivot ${arr[i]} is now sorted`, 'sorted');
+
+                quickSort(low, i - 1);
+                quickSort(i + 1, high);
+            }
+
+            quickSort(0, arr.length - 1);
+            return steps;
+        }
+
+        function getMergeSortSteps(inputArr) {
+            const arr = [...inputArr];
+            const steps = [];
+            const n = arr.length;
+
+            function mergeSort(start, end) {
+                if (start >= end) return;
+                const mid = Math.floor((start + end) / 2);
+                mergeSort(start, mid);
+                mergeSort(mid + 1, end);
+                merge(start, mid, end);
+            }
+
+            function merge(start, mid, end) {
+                const left = arr.slice(start, mid + 1);
+                const right = arr.slice(mid + 1, end + 1);
+                let i = 0, j = 0, k = start;
+                const isFinalMerge = (start === 0 && end === n - 1);
+
+                while (i < left.length && j < right.length) {
+                    recordStep(steps, arr, [start + i, mid + 1 + j], [], [], `Comparing ${left[i]} and ${right[j]}`, 'comparing');
+                    if (left[i] <= right[j]) {
+                        arr[k] = left[i];
+                        i++;
+                    } else {
+                        arr[k] = right[j];
+                        j++;
+                    }
+                    const currentSorted = isFinalMerge ? Array.from({ length: k + 1 }, (_, idx) => idx) : [];
+                    recordStep(steps, arr, [], [k], currentSorted, `Placing ${arr[k]} into merged position`, 'swapping');
+                    k++;
+                }
+
+                while (i < left.length) {
+                    arr[k] = left[i];
+                    const currentSorted = isFinalMerge ? Array.from({ length: k + 1 }, (_, idx) => idx) : [];
+                    recordStep(steps, arr, [], [k], currentSorted, `Placing remaining ${arr[k]}`, 'swapping');
+                    i++;
+                    k++;
+                }
+
+                while (j < right.length) {
+                    arr[k] = right[j];
+                    const currentSorted = isFinalMerge ? Array.from({ length: k + 1 }, (_, idx) => idx) : [];
+                    recordStep(steps, arr, [], [k], currentSorted, `Placing remaining ${arr[k]}`, 'swapping');
+                    j++;
+                    k++;
+                }
+            }
+
+            mergeSort(0, n - 1);
+            return steps;
+        }
+
+        function getHeapSortSteps(inputArr) {
+            const arr = [...inputArr];
+            const steps = [];
+            const sorted = [];
+            const n = arr.length;
+
+            function heapify(heapSize, rootIdx) {
+                let largest = rootIdx;
+                const left = 2 * rootIdx + 1;
+                const right = 2 * rootIdx + 2;
+
+                if (left < heapSize) {
+                    recordStep(steps, arr, [largest, left], [], sorted, `Comparing parent ${arr[largest]} with left child ${arr[left]}`, 'comparing');
+                    if (arr[left] > arr[largest]) largest = left;
+                }
+
+                if (right < heapSize) {
+                    recordStep(steps, arr, [largest, right], [], sorted, `Comparing ${arr[largest]} with right child ${arr[right]}`, 'comparing');
+                    if (arr[right] > arr[largest]) largest = right;
+                }
+
+                if (largest !== rootIdx) {
+                    recordStep(steps, arr, [], [rootIdx, largest], sorted, `Swapping ${arr[rootIdx]} and ${arr[largest]} to maintain max-heap`, 'swapping');
+                    [arr[rootIdx], arr[largest]] = [arr[largest], arr[rootIdx]];
+                    heapify(heapSize, largest);
+                }
+            }
+
+            // Build max heap
+            for (let i = Math.floor(n / 2) - 1; i >= 0; i--) {
+                heapify(n, i);
+            }
+
+            // Extract elements from heap one by one
+            for (let i = n - 1; i > 0; i--) {
+                recordStep(steps, arr, [], [0, i], sorted, `Moving largest value ${arr[0]} to the end`, 'swapping');
+                [arr[0], arr[i]] = [arr[i], arr[0]];
+                sorted.push(i);
+                recordStep(steps, arr, [], [], sorted, `${arr[i]} is now sorted`, 'sorted');
+                heapify(i, 0);
+            }
+            sorted.push(0);
+            return steps;
+        }
+
+        function getRadixSortSteps(inputArr) {
+            const arr = [...inputArr];
+            const steps = [];
+            const maxNum = Math.max(...arr);
+            let exp = 1;
+
+            while (Math.floor(maxNum / exp) > 0) {
+                const placeName = exp === 1 ? 'ones' : exp === 10 ? 'tens' : 'hundreds';
+                const buckets = Array.from({ length: 10 }, () => []);
+
+                // Distribute into buckets
+                for (let i = 0; i < arr.length; i++) {
+                    const digit = Math.floor(arr[i] / exp) % 10;
+                    recordStep(steps, arr, [i], [], [], `Reading ${placeName} digit of ${arr[i]} (digit: ${digit})`, 'comparing');
+                    buckets[digit].push(arr[i]);
+                }
+
+                // Collect back from buckets
+                const isLastPass = Math.floor(maxNum / (exp * 10)) === 0;
+                let idx = 0;
+                for (let b = 0; b < 10; b++) {
+                    for (const val of buckets[b]) {
+                        arr[idx] = val;
+                        const currentSorted = isLastPass ? Array.from({ length: idx + 1 }, (_, k) => k) : [];
+                        recordStep(steps, arr, [], [idx], currentSorted, `Placing ${val} from bucket ${b} (${placeName} place)`, 'swapping');
+                        idx++;
+                    }
+                }
+                exp *= 10;
+            }
+            return steps;
+        }
+
+        /**
+         * Generates steps for the currently selected algorithm.
+         */
+        function buildSteps() {
+            switch (state.selectedAlgo) {
+                case 'selection': return getSelectionSortSteps(state.initialArray);
+                case 'insertion': return getInsertionSortSteps(state.initialArray);
+                case 'quick':     return getQuickSortSteps(state.initialArray);
+                case 'merge':     return getMergeSortSteps(state.initialArray);
+                case 'heap':      return getHeapSortSteps(state.initialArray);
+                case 'radix':     return getRadixSortSteps(state.initialArray);
+                default:          return [];
+            }
+        }
+
+        /* ========================================================================
+           PLAYBACK CONTROLS
+           ======================================================================== */
+
+        function startSimulation() {
+            if (state.isSorted) {
+                resetToInitialArray();
+            }
+
+            if (state.steps.length === 0) {
+                state.steps = buildSteps();
+            }
+
+            state.isPlaying = true;
+            updateStartButtonUI();
+            setControlsDisabled(true);
+            runNextStep();
+        }
+
+        function pauseSimulation() {
+            state.isPlaying = false;
+            if (state.timerId) {
+                clearTimeout(state.timerId);
+                state.timerId = null;
+            }
+            updateStartButtonUI();
+            setControlsDisabled(false);
+        }
+
+        function runNextStep() {
+            if (!state.isPlaying) return;
+
+            if (state.currentStepIndex >= state.steps.length) {
+                // Finished sorting!
+                state.isPlaying = false;
+                state.isSorted = true;
+                const allIndices = state.currentArray.map((_, idx) => idx);
+                renderBars(state.currentArray, { sorted: allIndices });
+                updateStatus('Sorted! All elements are in ascending order.', 'sorted');
+                updateStartButtonUI();
+                setControlsDisabled(false);
+                return;
+            }
+
+            const step = state.steps[state.currentStepIndex];
+            state.currentArray = step.array;
+            renderBars(step.array, {
+                comparing: step.comparing,
+                swapping: step.swapping,
+                sorted: step.sorted
+            });
+            updateStatus(step.message, step.type);
+
+            state.currentStepIndex++;
+            state.timerId = setTimeout(runNextStep, getDelayMs());
+        }
+
+        function updateStartButtonUI() {
+            if (state.isPlaying) {
+                btnStartText.textContent = 'Pause';
+                iconPlay.classList.add('hidden');
+                iconPause.classList.remove('hidden');
+                btnStartPause.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+                btnStartPause.classList.add('bg-amber-500', 'hover:bg-amber-600');
+            } else {
+                btnStartText.textContent = state.isSorted ? 'Sort Again' : (state.currentStepIndex > 0 ? 'Resume' : 'Start Sort');
+                iconPlay.classList.remove('hidden');
+                iconPause.classList.add('hidden');
+                btnStartPause.classList.remove('bg-amber-500', 'hover:bg-amber-600');
+                btnStartPause.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+            }
+        }
+
+        function setControlsDisabled(disabled) {
+            sliderSize.disabled = disabled;
+            algoButtons.forEach(btn => {
+                btn.disabled = disabled;
+                btn.classList.toggle('opacity-50', disabled);
+                btn.classList.toggle('cursor-not-allowed', disabled);
+            });
+        }
+
+        /* ========================================================================
+           EVENT LISTENERS
+           ======================================================================== */
+
+        // Algorithm selector buttons
+        algoButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (state.isPlaying) return;
+                
+                // Update active button styles
+                algoButtons.forEach(b => {
+                    b.classList.remove('bg-indigo-600', 'text-white', 'shadow-sm');
+                    b.classList.add('bg-slate-100', 'text-slate-600', 'hover:bg-slate-200/70');
+                });
+                btn.classList.remove('bg-slate-100', 'text-slate-600', 'hover:bg-slate-200/70');
+                btn.classList.add('bg-indigo-600', 'text-white', 'shadow-sm');
+
+                // Update state & info banner
+                const algoKey = btn.dataset.algo;
+                state.selectedAlgo = algoKey;
+                algoTitle.textContent = ALGORITHMS[algoKey].name;
+                algoDesc.textContent = ALGORITHMS[algoKey].description;
+
+                resetToInitialArray();
+            });
+        });
+
+        // Start / Pause toggle
+        btnStartPause.addEventListener('click', () => {
+            if (state.isPlaying) {
+                pauseSimulation();
+                updateStatus('Paused. Press Resume to continue.', 'default');
+            } else {
+                startSimulation();
+            }
+        });
+
+        // Reset button
+        btnReset.addEventListener('click', () => {
+            resetToInitialArray();
+        });
+
+        // Generate New Array button
+        btnNewArray.addEventListener('click', () => {
+            generateNewArray();
+        });
+
+        // Array Size slider
+        sliderSize.addEventListener('input', (e) => {
+            state.arraySize = Number(e.target.value);
+            valSize.textContent = state.arraySize;
+            generateNewArray();
+        });
+
+        // Speed slider
+        sliderSpeed.addEventListener('input', (e) => {
+            state.speed = Number(e.target.value);
+            updateSpeedLabel();
+        });
+
+        // Initialize app on load
+        window.addEventListener('DOMContentLoaded', () => {
+            sliderSize.value = state.arraySize;
+            valSize.textContent = state.arraySize;
+            updateSpeedLabel();
+            generateNewArray();
+        });
+
+        // Re-render bars responsively on screen rotation or resize
+        window.addEventListener('resize', () => {
+            if (!state.isPlaying) {
+                const allIndices = state.isSorted ? state.currentArray.map((_, idx) => idx) : [];
+                renderBars(state.currentArray, { sorted: allIndices });
+            }
+        });
+    </script>
+</body>
+</html>
